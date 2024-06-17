@@ -21,6 +21,35 @@ CREATE TABLE user_activity (
             category VARCHAR(50)
             FOREIGN KEY (usuario_id) REFERENCES user_log(id)
         )
+CREATE TABLE pedidos (
+    pedido_id INT PRIMARY KEY IDENTITY(1,1),
+    usuario_id INT,
+    fecha_pedido DATETIME,
+    subtotal DECIMAL(10, 2),
+    descuento DECIMAL(10, 2),
+    impuestos DECIMAL(10, 2),
+    total DECIMAL(15, 2),
+    FOREIGN KEY (usuario_id) REFERENCES user_log(id)
+);
+
+CREATE TABLE facturas (
+    factura_id INT PRIMARY KEY IDENTITY(1,1),
+    pedido_id INT,
+    fecha_factura DATETIME,
+    total DECIMAL(18, 2),
+    forma_pago VARCHAR(50),
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(pedido_id)
+);
+CREATE TABLE pagos (
+    pago_id INT PRIMARY KEY IDENTITY(1,1),
+    factura_id INT,
+    medio_pago VARCHAR(50),
+    operador VARCHAR(100),
+    fecha_pago DATETIME,
+    monto DECIMAL(18, 2),
+    FOREIGN KEY (factura_id) REFERENCES facturas(factura_id)
+);
+
 
 INSERT INTO user_log (usuario_nombre, contraseña)
 VALUES ('jhon', '1234');

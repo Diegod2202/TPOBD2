@@ -15,7 +15,7 @@ def add_to_cart(user_id, product_id, quantity):
     
     cart_key = f"cart:{user_id}"
     # Obtener el carrito actual del hash
-    cart = redis_conn.hget(cart_key, "current")
+    cart = redis_conn.hget(cart_key, "actual")
     if cart:
         cart = json.loads(cart)
         # Guardar el carrito original si no está guardado ya
@@ -30,14 +30,14 @@ def add_to_cart(user_id, product_id, quantity):
     else:
         cart[product_id] = quantity
     
-    redis_conn.hset(cart_key, "current", json.dumps(cart))
+    redis_conn.hset(cart_key, "actual", json.dumps(cart))
     return cart
 
 def remove_from_cart(user_id, product_id):
     cart_key = f"cart:{user_id}"
     
     # Obtener el carrito actual del hash
-    cart = redis_conn.hget(cart_key, "current")
+    cart = redis_conn.hget(cart_key, "actual")
     if cart:
         cart = json.loads(cart)
         # Guardar el carrito original si no está guardado ya
@@ -46,14 +46,14 @@ def remove_from_cart(user_id, product_id):
         # Eliminar el producto del carrito
         if product_id in cart:
             del cart[product_id]
-            redis_conn.hset(cart_key, "current", json.dumps(cart))
+            redis_conn.hset(cart_key, "actual", json.dumps(cart))
     return cart
 
 def update_cart_item(user_id, product_id, quantity):
     cart_key = f"cart:{user_id}"
     
     # Obtener el carrito actual del hash
-    cart = redis_conn.hget(cart_key, "current")
+    cart = redis_conn.hget(cart_key, "actual")
     if cart:
         cart = json.loads(cart)
         # Guardar el carrito original si no está guardado ya
@@ -61,12 +61,12 @@ def update_cart_item(user_id, product_id, quantity):
         redis_conn.hset(cart_key, "original", json.dumps(cart))
         # Actualizar la cantidad del producto en el carrito
         cart[product_id] = quantity
-        redis_conn.hset(cart_key, "current", json.dumps(cart))
+        redis_conn.hset(cart_key, "actual", json.dumps(cart))
     return cart
 
 def get_cart(user_id):
     cart_key = f"cart:{user_id}"
-    cart = redis_conn.hget(cart_key, "current")
+    cart = redis_conn.hget(cart_key, "actual")
     if cart:
         return json.loads(cart)
     return {}
@@ -77,7 +77,7 @@ def revert_cart_changes(user_id):
     # Obtener el carrito original del hash
     original_cart = redis_conn.hget(cart_key, "original")
     if original_cart:
-        redis_conn.hset(cart_key, "current", original_cart)
+        redis_conn.hset(cart_key, "actual", original_cart)
         return json.loads(original_cart)
     return {}
 

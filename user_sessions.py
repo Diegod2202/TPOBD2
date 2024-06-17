@@ -1,11 +1,10 @@
 from datetime import datetime
 from uuid import uuid4
-from db_connection import DatabaseConnection
 from mongodb_config import get_mongodb_connection
 
 db = get_mongodb_connection()
 
-def verify_user_credentials(username, password, db_connection):
+def verificar_credenciales(username, password, db_connection):
     conn = db_connection.get_sql_server_connection()
     try:
         cursor = conn.cursor()
@@ -17,6 +16,34 @@ def verify_user_credentials(username, password, db_connection):
             return None
     finally:
         conn.close()
+
+def register_user(username, password, name, email, address, phone, dni, db_connection):
+    conn = db_connection.get_sql_server_connection()
+    try:
+        cursor = conn.cursor()
+        
+        # Verificar si el username ya existe
+        cursor.execute("SELECT id FROM user_log WHERE usuario_nombre = ?", (username,))
+        if cursor.fetchone():
+            return "El nombre de usuario ya existe.", None
+        
+        # Insertar en user_log
+        cursor.execute("INSERT INTO user_log (usuario_nombre, contraseña) VALUES (?, ?)", (username, password))
+        conn.commit()
+        
+        # Obtener el id del nuevo usuario
+        cursor.execute("SELECT id FROM user_log WHERE usuario_nombre = ?", (username,))
+        user_id = cursor.fetchone()[0]
+        
+        # Insertar en usuarios
+        cursor.execute("INSERT INTO usuarios (usuario_id, nombre, email, direccion, telefono, dni) VALUES (?, ?, ?, ?, ?, ?)", 
+        (user_id, name, email, address, phone, dni))
+        conn.commit()
+        
+        return None, user_id
+    finally:
+        conn.close()
+
 
 def start_user_session(user_id, db_connection):
     conn = db_connection.get_sql_server_connection()
@@ -48,14 +75,14 @@ def end_user_session(session_id, db_connection):
     if session:
         login_time = session['login_time']
         logout_time = datetime.now()
-        session_minutes = calculate_session_minutes(login_time, logout_time)
+        session_minutes = minutos_sesion_calc(login_time, logout_time)
 
         db.user_sessions.update_one(
             {"session_id": session_id},
             {"$set": {"logout_time": logout_time}}
         )
 
-        update_user_activity(session['user_id'], session_minutes, db_connection)
+        update_actividad_usuario(session['user_id'], session_minutes, db_connection)
         return session_minutes
     else:
         return "Session not found."
@@ -63,10 +90,10 @@ def end_user_session(session_id, db_connection):
 def get_user_session(session_id):
     return db.user_sessions.find_one({"session_id": session_id})
 
-def calculate_session_minutes(login_time, logout_time):
+def minutos_sesion_calc(login_time, logout_time):
     return int((logout_time - login_time).total_seconds() / 60)
 
-def update_user_activity(user_id, session_minutes, db_connection):
+def update_actividad_usuario(user_id, session_minutes, db_connection):
     conn = db_connection.get_sql_server_connection()
     try:
         cursor = conn.cursor()
@@ -75,13 +102,13 @@ def update_user_activity(user_id, session_minutes, db_connection):
 
         if result:
             new_total_minutes = result[0] + session_minutes
-            new_category = categorize_user(new_total_minutes)
+            new_category = categorizar_usuario(new_total_minutes)
             cursor.execute(
                 "UPDATE user_activity SET total_minutes = ?, category = ? WHERE usuario_id = ?",
                 (new_total_minutes, new_category, user_id)
             )
         else:
-            new_category = categorize_user(session_minutes)
+            new_category = categorizar_usuario(session_minutes)
             cursor.execute(
                 "INSERT INTO user_activity (usuario_id, total_minutes, category) VALUES (?, ?, ?)",
                 (user_id, session_minutes, new_category)
@@ -93,7 +120,7 @@ def update_user_activity(user_id, session_minutes, db_connection):
     finally:
         conn.close()
 
-def categorize_user(total_minutes):
+def categorizar_usuario(total_minutes):
     if total_minutes > 240:
         return "TOP"
     elif total_minutes > 120:
